@@ -1,0 +1,15 @@
+D:\work_nxp\monkey_d_wifi_setup_cm7\CMSIS/core_cm7.h:2143:22:__NVIC_SetPriority	16	static
+D:\work_nxp\monkey_d_wifi_setup_cm7\drivers/fsl_clock.h:1987:24:CLOCK_GetRootClockMux	16	static
+D:\work_nxp\monkey_d_wifi_setup_cm7\drivers/fsl_clock.h:2028:24:CLOCK_GetRootClockDiv	16	static
+D:\work_nxp\monkey_d_wifi_setup_cm7\drivers/fsl_clock.h:2073:20:CLOCK_SetRootClock	16	static
+D:\work_nxp\monkey_d_wifi_setup_cm7\drivers/fsl_clock.h:2156:24:CLOCK_GetRootClockFreq	32	static
+D:\work_nxp\monkey_d_wifi_setup_cm7\drivers/fsl_iomuxc.h:1665:20:IOMUXC_SetPinConfig	24	static
+../source/sdmmc_config.c:49:10:BOARD_USDHC1ClockConfiguration	24	static
+../source/sdmmc_config.c:68:6:BOARD_USDHC_Errata	4	static
+../source/sdmmc_config.c:83:6:BOARD_SDCardGetDetectStatus	16	static
+../source/sdmmc_config.c:98:6:SDMMC_SD_CD_Callback	24	static
+../source/sdmmc_config.c:106:6:BOARD_SDCardDAT3PullFunction	24	static
+../source/sdmmc_config.c:126:6:BOARD_SDCardDetectInit	24	static
+../source/sdmmc_config.c:169:6:BOARD_SDCardPowerResetInit	16	static
+../source/sdmmc_config.c:180:6:BOARD_SDCardPowerControl	16	static
+../source/sdmmc_config.c:231:6:BOARD_SDIO_Config	32	static

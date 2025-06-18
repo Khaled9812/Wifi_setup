@@ -1,0 +1,8 @@
+../source/wifi_init.c:9:12:wifi_init	16	static
+../source/wifi_init.c:17:12:wifi_join	24	static
+../source/wifi_init.c:27:12:wifi_leave	16	static
+../source/wifi_init.c:34:12:wifi_get_ip	16	static
+../source/wifi_init.c:40:12:wifi_start_ap	24	static
+../source/wifi_init.c:47:12:wifi_stop_ap	8	static
+../source/wifi_init.c:53:7:wifi_scan	8	static
+../source/wifi_init.c:54:7:wifi_ping_start	16	static

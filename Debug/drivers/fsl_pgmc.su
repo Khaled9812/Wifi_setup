@@ -1,0 +1,13 @@
+../drivers/fsl_pgmc.c:48:6:PGMC_BPC_ControlPowerDomainByCpuPowerMode	32	static
+../drivers/fsl_pgmc.c:106:6:PGMC_BPC_ControlPowerDomainBySetPointMode	24	static
+../drivers/fsl_pgmc.c:136:6:PGMC_BPC_ControlPowerDomainBySoftwareMode	16	static
+../drivers/fsl_pgmc.c:154:6:PGMC_CPC_CORE_PowerOffByCpuPowerMode	16	static
+../drivers/fsl_pgmc.c:185:6:PGMC_CPC_CACHE_ControlByCpuPowerMode	24	static
+../drivers/fsl_pgmc.c:228:6:PGMC_CPC_CACHE_ControlBySetPointMode	40	static
+../drivers/fsl_pgmc.c:265:6:PGMC_CPC_CACHE_TriggerMLPLSoftwareChange	16	static
+../drivers/fsl_pgmc.c:284:6:PGMC_CPC_LMEM_ControlByCpuPowerMode	24	static
+../drivers/fsl_pgmc.c:328:6:PGMC_CPC_LMEM_ControlBySetPointMode	40	static
+../drivers/fsl_pgmc.c:365:6:PGMC_CPC_LMEM_TriggerMLPLSoftwareChange	16	static
+../drivers/fsl_pgmc.c:392:6:PGMC_MIF_SetSignalBehaviour	40	static
+../drivers/fsl_pgmc.c:413:6:PGMC_PPC_ControlByCpuPowerMode	16	static
+../drivers/fsl_pgmc.c:447:6:PGMC_PPC_ControlBySetPointMode	24	static

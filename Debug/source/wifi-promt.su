@@ -1,0 +1,11 @@
+../source/wifi-promt.c:75:13:read_line	24	static
+../source/wifi-promt.c:121:13:waitForInitialUserInput	16	static
+../source/wifi-promt.c:136:13:printOwnIPAddress	24	static
+../source/wifi-promt.c:161:5:wifi_create_ap	16	static
+../source/wifi-promt.c:200:5:wifi_connect_ssid	16	static
+../source/wifi-promt.c:244:6:wifi_list_ssids	16	static
+../source/wifi-promt.c:267:6:prompt_for_ping_address	24	static
+../source/wifi-promt.c:294:13:displayMenu	8	static
+../source/wifi-promt.c:315:13:processMenuOption	112	static
+../source/wifi-promt.c:395:6:wifi_promt_run	8	static
+../source/wifi-promt.c:419:6:LinkStatusChangeCallback	16	static

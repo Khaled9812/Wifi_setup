@@ -1,0 +1,7 @@
+D:\work_nxp\monkey_d_wifi_setup_cm7\wifi\wifidriver\incl/mlan_util.h:108:33:util_peek_list	32	static
+../wifi/wifidriver/mlan_wmm.c:132:8:wlan_clean_txrx	24	static
+../wifi/wifidriver/mlan_wmm.c:169:6:wlan_wmm_default_queue_priorities	16	static
+../wifi/wifidriver/mlan_wmm.c:190:8:wlan_init_wmm_param	16	static
+../wifi/wifidriver/mlan_wmm.c:264:8:wlan_wmm_init	24	static
+../wifi/wifidriver/mlan_wmm.c:317:12:wlan_wmm_get_ralist_node	32	static
+../wifi/wifidriver/mlan_wmm.c:354:7:wlan_wmm_process_association_req	32	static
