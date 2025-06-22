@@ -1,0 +1,4 @@
+../source/socket_comm.c:8:5:socket_comm_connect	40	static
+../source/socket_comm.c:37:5:socket_comm_send	24	static
+../source/socket_comm.c:48:5:socket_comm_receive	32	static
+../source/socket_comm.c:58:6:socket_comm_close	16	static
