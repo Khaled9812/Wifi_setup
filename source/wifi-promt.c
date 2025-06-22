@@ -1,31 +1,14 @@
 /***********************************************************************
  *  wifi-promt.c
  *
- *  @brief Wi‑Fi Prompt Module – Echo-Enabled User Input for Wi‑Fi Setup
+ *  @brief Wi‑Fi Prompt Module – Echo‑Enabled User Input for Wi‑Fi Setup
  *
- *  This file contains the implementation of the Wi‑Fi prompt module which
- *  handles user input (with character echoing), network scanning, and Wi‑Fi
- *  connection management. It provides functions that prompt the user to
- *  start an access point, join a network in station mode, disconnect,
- *  ping a host, or scan for available networks.
+ *  This file implements the Wi‑Fi prompt module that handles user input,
+ *  network scanning, Wi‑Fi connection management, and a messaging mode.
  *
- *  The module uses blocking UART read calls (GETCHAR) and immediate echoing
- *  (via PUTCHAR) to provide feedback to the user as characters are typed.
+
  *
- *  Functions in this file:
- *      - read_line: Reads a line from UART with echo and basic editing.
- *      - waitForInitialUserInput: Blocks until the user presses <Enter>.
- *      - printOwnIPAddress: Retrieves and prints the device's IP in STA mode.
- *      - wifi_create_ap: Prompts for AP parameters and creates an Access Point.
- *      - wifi_connect_ssid: Connects to a Wi‑Fi network using provided parameters.
- *      - wifi_list_ssids: Scans for available networks.
- *      - prompt_for_ping_address: Prompts for an IP/host and starts a ping test.
- *      - displayMenu: Displays the main menu to the user.
- *      - processMenuOption: Processes the user's menu selection.
- *      - wifi_promt_run: Runs the main prompt loop.
- *      - LinkStatusChangeCallback: Callback to report link status changes.
- *
- *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX‑License‑Identifier: BSD‑3‑Clause
  ***********************************************************************/
 
 #include "wifi-promt.h"
@@ -35,89 +18,33 @@
 #include "ping.h"
 #include "app.h"
 #include "osa.h"
+#include "fsl_os_abstraction.h"
+#include "socket_comm.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "errno.h"  /* For EWOULDBLOCK/EAGAIN */
 
-/* ------------------ Local Definitions ------------------ */
 #define WPL_AP_CHANNEL  1U
 
-/**
- * @brief Enum representing the current Wi‑Fi mode.
- */
 typedef enum
 {
-    MODE_NONE = 0,  /**< No active connection */
-    MODE_AP,        /**< Access Point mode */
-    MODE_STA        /**< Station mode */
+    MODE_NONE = 0,
+    MODE_AP,
+    MODE_STA
 } wifi_mode_t;
 
-/* ------------------ Local Variables -------------------- */
-static char global_ssid[WPL_WIFI_SSID_LENGTH];         /**< Buffer to store SSID */
-static char global_password[WPL_WIFI_PASSWORD_LENGTH]; /**< Buffer to store password */
-static ip4_addr_t pingIp;                       /**< IP address for ping test */
-static wifi_mode_t currentMode = MODE_NONE;     /**< Current Wi‑Fi mode */
+static char global_ssid[WPL_WIFI_SSID_LENGTH];
+static char global_password[WPL_WIFI_PASSWORD_LENGTH];
+static ip4_addr_t pingIp;
+static wifi_mode_t currentMode = MODE_NONE;
 
-/* ------------------ Helper Functions --------------------- */
+/* Flag indicating if messaging is running */
+static volatile int messagingRunning = 0;
 
-/**
- * @brief Reads a line of input from the UART.
- *
- * This function blocks until a line ending ('\r' or '\n') is received.
- * It echoes each character immediately, handles backspace (DEL) for editing,
- * and terminates the input string with a null character.
- *
- * @param buf Buffer to store the input characters.
- * @param len Length of the buffer.
- *
- * @return void.
- */
-static void read_line(char *buf, size_t len)
-{
-    size_t idx = 0;
-    if (!buf || !len)
-        return;
+/* Forward declaration for helper function */
+static void read_line(char *buf, size_t len);
 
-    while (1)
-    {
-        int ch = GETCHAR();  /* Blocking call from UART */
-
-        if ((ch == '\r') || (ch == '\n'))
-        {   /* Terminate line when Enter is pressed */
-            PUTCHAR('\r');
-            PUTCHAR('\n');
-            buf[idx] = '\0';
-            return;
-        }
-
-        if ((ch == 0x08) || (ch == 0x7F))  /* Handle Backspace/DEL */
-        {
-            if (idx > 0)
-            {
-                idx--;
-                PUTCHAR('\b');
-                PUTCHAR(' ');
-                PUTCHAR('\b');
-            }
-            continue;
-        }
-
-        if (idx < (len - 1))
-        {
-            buf[idx++] = (char)ch;
-            PUTCHAR(ch);
-        }
-    }
-}
-
-/**
- * @brief Waits for the user to press <Enter> before continuing.
- *
- * This function is used to ensure that the user is ready to start
- * the Wi‑Fi Setup Demo.
- *
- * @return void.
- */
 static void waitForInitialUserInput(void)
 {
     char dummy[8];
@@ -125,14 +52,6 @@ static void waitForInitialUserInput(void)
     read_line(dummy, sizeof(dummy));
 }
 
-/**
- * @brief Retrieves and prints the device's IP address.
- *
- * This function calls WPL_GetIP to obtain the device's IP address
- * (for station mode) and prints it out. If unsuccessful, it prints an error.
- *
- * @return void.
- */
 static void printOwnIPAddress(void)
 {
     char ipStr[16] = {0};
@@ -146,18 +65,40 @@ static void printOwnIPAddress(void)
     }
 }
 
-/* --------------------- Public Wi‑Fi Functions --------------------- */
+static void read_line(char *buf, size_t len)
+{
+    size_t idx = 0;
+    if (!buf || !len)
+        return;
+    while (1)
+    {
+        int ch = GETCHAR();
+        if ((ch == '\r') || (ch == '\n'))
+        {
+            PUTCHAR('\r');
+            PUTCHAR('\n');
+            buf[idx] = '\0';
+            return;
+        }
+        if ((ch == 0x08) || (ch == 0x7F))
+        {
+            if (idx > 0)
+            {
+                idx--;
+                PUTCHAR('\b');
+                PUTCHAR(' ');
+                PUTCHAR('\b');
+            }
+            continue;
+        }
+        if (idx < (len - 1))
+        {
+            buf[idx++] = (char)ch;
+            PUTCHAR(ch);
+        }
+    }
+}
 
-/**
- * @brief Creates an Access Point using provided SSID and password.
- *
- * This function starts an Access Point with the given parameters.
- *
- * @param ssid The SSID to use for the Access Point.
- * @param password The password for the Access Point (or an empty string for open mode).
- *
- * @return 0 on success, non-zero on failure.
- */
 int wifi_create_ap(const char *ssid, const char *password)
 {
     if (!ssid || !password)
@@ -165,13 +106,10 @@ int wifi_create_ap(const char *ssid, const char *password)
         PRINTF("[!] Invalid AP parameters\r\n");
         return -1;
     }
-
-    /* Copy parameters to global buffers for potential later use */
     strncpy(global_ssid, ssid, sizeof(global_ssid) - 1);
     strncpy(global_password, password, sizeof(global_password) - 1);
     global_ssid[sizeof(global_ssid) - 1] = '\0';
     global_password[sizeof(global_password) - 1] = '\0';
-
     PRINTF("\r\n[i] Starting AP…\r\n");
     if (WPL_Start_AP(global_ssid, global_password, WPL_AP_CHANNEL) == WPLRET_SUCCESS)
     {
@@ -179,24 +117,10 @@ int wifi_create_ap(const char *ssid, const char *password)
         currentMode = MODE_AP;
         return 0;
     }
-    else
-    {
-        PRINTF("[!] Failed to start AP\r\n");
-        return -1;
-    }
+    PRINTF("[!] Failed to start AP\r\n");
+    return -1;
 }
 
-/**
- * @brief Connects to a Wi‑Fi network using provided SSID and password.
- *
- * This function adds the network profile and attempts to join the network,
- * then prints the device's IP address on success.
- *
- * @param ssid The SSID of the network to join.
- * @param password The password for the network (or an empty string if open).
- *
- * @return 0 on success, non-zero on failure.
- */
 int wifi_connect_ssid(const char *ssid, const char *password)
 {
     if (!ssid || !password)
@@ -204,19 +128,15 @@ int wifi_connect_ssid(const char *ssid, const char *password)
         PRINTF("[!] Invalid network parameters\r\n");
         return -1;
     }
-
-    /* Copy parameters to global buffers for potential later use */
     strncpy(global_ssid, ssid, sizeof(global_ssid) - 1);
     strncpy(global_password, password, sizeof(global_password) - 1);
     global_ssid[sizeof(global_ssid) - 1] = '\0';
     global_password[sizeof(global_password) - 1] = '\0';
-
     if (WPL_AddNetwork(global_ssid, global_password, global_ssid) != WPLRET_SUCCESS)
     {
         PRINTF("[!] Could not add network profile\r\n");
         return -1;
     }
-
     PRINTF("\r\n[i] Joining '%s'…\r\n", global_ssid);
     if (WPL_Join(global_ssid) == WPLRET_SUCCESS)
     {
@@ -225,29 +145,17 @@ int wifi_connect_ssid(const char *ssid, const char *password)
         printOwnIPAddress();
         return 0;
     }
-    else
-    {
-        PRINTF("[!] Join failed\r\n");
-        WPL_RemoveNetwork(global_ssid);
-        return -1;
-    }
+    PRINTF("[!] Join failed\r\n");
+    WPL_RemoveNetwork(global_ssid);
+    return -1;
 }
 
-/**
- * @brief Scans for available Wi‑Fi networks.
- *
- * This function initiates a scan for networks using WPL_Scan().
- * Currently, the scan results are freed without being printed.
- *
- * @return void.
- */
 void wifi_list_ssids(void)
 {
     PRINTF("\r\nScanning…\r\n");
     char *networks = WPL_Scan();
     if (networks)
     {
-        /* Optionally, add code here to print networks info */
         vPortFree(networks);
     }
     else
@@ -256,20 +164,11 @@ void wifi_list_ssids(void)
     }
 }
 
-/**
- * @brief Prompts the user for an IP/host and initiates a ping test.
- *
- * Reads an IP address or hostname from the UART and starts a ping test
- * using ping_init() if the address is valid.
- *
- * @return void.
- */
 void prompt_for_ping_address(void)
 {
     char ipString[IP4ADDR_STRLEN_MAX];
     PRINTF("\r\nEnter host/IP to ping: ");
     read_line(ipString, sizeof(ipString));
-
     if (ipaddr_aton(ipString, &pingIp))
     {
         PRINTF("\r\n[i] Pinging %s…\r\n", ipString);
@@ -281,50 +180,132 @@ void prompt_for_ping_address(void)
     }
 }
 
+/* --------------------- Messaging Mode --------------------- */
+
+/* The messaging receive task runs in a separate thread */
+static void messaging_recv_task(void *arg)
+{
+    int sock = *(int *)arg;
+    char recv_buf[128];
+    int len;
+    while (messagingRunning)
+    {
+        memset(recv_buf, 0, sizeof(recv_buf));
+        len = socket_comm_receive(sock, recv_buf, sizeof(recv_buf));
+        if (len > 0)
+        {
+            PRINTF("\r\n[Received]: %s\r\n", recv_buf);
+        }
+        else if (len == 0)
+        {
+            PRINTF("\r\n[Received]: Connection closed by peer.\r\n");
+            break;
+        }
+        else if (len < 0)
+        {
+            if (errno != EWOULDBLOCK && errno != EAGAIN)
+            {
+                PRINTF("\r\n[Received]: Socket error %d\r\n", errno);
+                break;
+            }
+        }
+        OSA_TimeDelay(100);
+    }
+    /* Task exits */
+}
+
+void messaging_mode(void)
+{
+    char target_ip[16];
+    char port_str[8];
+    int port, sock;
+    char send_buf[128];
+    osa_task_handle_t recvTaskHandle = 0;
+
+    PRINTF("\r\n--- Messaging Mode ---\r\n");
+    PRINTF("Enter target IP address: ");
+    read_line(target_ip, sizeof(target_ip));
+    PRINTF("Enter target port: ");
+    read_line(port_str, sizeof(port_str));
+    port = atoi(port_str);
+    if (port <= 0)
+    {
+        PRINTF("[!] Invalid port number\r\n");
+        return;
+    }
+    sock = socket_comm_connect(target_ip, (uint16_t)port);
+    if (sock < 0)
+    {
+        return;
+    }
+    PRINTF("[i] Connected. Type messages to send.\r\n");
+    PRINTF("To exit messaging mode, type -exit or \"exit\".\r\n");
+
+    messagingRunning = 1;
+
+    osa_task_def_t messaging_task_def = {
+        .tname     = "MSG_RX",
+        .stacksize = 1024,
+        .tpriority = OSA_PRIORITY_NORMAL,
+        .pthread   = messaging_recv_task
+    };
+
+    if (OSA_TaskCreate(&recvTaskHandle, &messaging_task_def, (void *)&sock) != kStatus_Success)
+    {
+        PRINTF("[!] Failed to create receiving task\r\n");
+        messagingRunning = 0;
+        socket_comm_close(sock);
+        return;
+    }
+
+    while (1)
+    {
+        PRINTF("\r\nMessage: ");
+        read_line(send_buf, sizeof(send_buf));
+        if ((strcmp(send_buf, "-exit") == 0) || (strcmp(send_buf, "\"exit\"") == 0))
+        {
+            PRINTF("[i] Exiting messaging mode...\r\n");
+            messagingRunning = 0;
+            break;
+        }
+        if (socket_comm_send(sock, send_buf) < 0)
+        {
+            PRINTF("[!] Send failed\r\n");
+            messagingRunning = 0;
+            break;
+        }
+    }
+    socket_comm_close(sock);
+    OSA_TimeDelay(200); /* Give the receive task time to exit */
+}
+
 /* --------------------- Menu System --------------------- */
 
-/**
- * @brief Displays the main Wi‑Fi Setup menu options.
- *
- * This function prints the available choices (start AP, join network, etc.)
- * to the UART.
- *
- * @return void.
- */
 static void displayMenu(void)
 {
     PRINTF("\r\n========== Wi‑Fi Setup Menu ==========\r\n");
-    PRINTF("1. Start Access-Point\r\n");
+    PRINTF("1. Start Access‑Point\r\n");
     PRINTF("2. Join Network (Station)\r\n");
     PRINTF("3. Disconnect / Stop\r\n");
     PRINTF("4. Ping Host\r\n");
     PRINTF("5. Scan Networks\r\n");
     PRINTF("6. Exit Demo\r\n");
+    PRINTF("7. Messaging\r\n");
     PRINTF("Select option: ");
 }
 
-/**
- * @brief Reads and processes the user's menu selection.
- *
- * Based on the user's selection from the menu, this function calls the
- * appropriate Wi‑Fi function. It also handles disconnecting the current
- * connection and exiting the demo.
- *
- * @return void.
- */
 static void processMenuOption(void)
 {
     char opt[4];
     read_line(opt, sizeof(opt));
     PRINTF("\r\n");
-
     switch (opt[0])
     {
         case '1':
         {
             char ap_ssid[WPL_WIFI_SSID_LENGTH];
             char ap_pass[WPL_WIFI_PASSWORD_LENGTH];
-            PRINTF("\r\nEnter SSID for Access Point: ");
+            PRINTF("\r\nEnter SSID for Access‑Point: ");
             read_line(ap_ssid, sizeof(ap_ssid));
             PRINTF("\r\nEnter Password (≥%d chars, or blank for open): ", WPL_WIFI_PASSWORD_MIN_LEN);
             read_line(ap_pass, sizeof(ap_pass));
@@ -376,26 +357,18 @@ static void processMenuOption(void)
             }
             vTaskEndScheduler();
             break;
+        case '7':
+            messaging_mode();
+            break;
         default:
             PRINTF("Invalid option\r\n");
             break;
     }
 }
 
-/* --------------------- Public API Implementation --------------------- */
-
-/**
- * @brief Runs the Wi‑Fi prompt menu.
- *
- * This function blocks and continuously listens for user input,
- * displaying the menu and processing the selected options.
- *
- * @return void.
- */
 void wifi_promt_run(void)
 {
     waitForInitialUserInput();
-
     while (true)
     {
         displayMenu();
@@ -404,18 +377,6 @@ void wifi_promt_run(void)
     }
 }
 
-/* --------------------- Link Status Callback --------------------- */
-
-/**
- * @brief Callback function for reporting Wi‑Fi link status.
- *
- * Prints a message indicating whether the link was reestablished or lost.
- *
- * @param linkState Boolean value where true means link reestablished and
- *                  false means link lost.
- *
- * @return void.
- */
 void LinkStatusChangeCallback(bool linkState)
 {
     PRINTF("%s\r\n", (linkState) ? "-------- LINK REESTABLISHED --------"
